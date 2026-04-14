@@ -2,79 +2,112 @@ import streamlit as st
 import joblib
 import re
 import nltk
-from nltk.corpus import stopwords
 import pandas as pd
+import os
+import datetime
+from nltk.corpus import stopwords
 
-# Download stopwords (required for the cloud environment)
+# --- CONFIGURATION & ASSETS ---
 nltk.download('stopwords')
-stop_words = set(stopwords.words('english'))
+STOP_WORDS = set(stopwords.words('english'))
 
-# 1. Load our saved AI tools
-model = joblib.load('spam_model.pkl')
-vectorizer = joblib.load('vectorizer.pkl')
+# --- MODULE 1: DATA PROCESSOR (UOK Chapter 4.6 - Functional Description) ---
+class DataProcessor:
+    """Handles text cleaning and validation logic."""
+    @staticmethod
+    def clean_text(text):
+        text = text.lower()
+        text = re.sub(r'[^a-zA-Z\s]', '', text)
+        words = text.split()
+        cleaned_words = [word for word in words if word not in STOP_WORDS]
+        return ' '.join(cleaned_words)
 
-# 2. Recreate our cleaning function
-def clean_text(text):
-    text = text.lower()
-    text = re.sub(r'[^a-zA-Z\s]', '', text)
-    words = text.split()
-    cleaned_words = [word for word in words if word not in stop_words]
-    return ' '.join(cleaned_words)
+    @staticmethod
+    def validate_input(text):
+        """Unit Testing Logic for Validation (UOK Chapter 4.10.4)"""
+        if not text.strip():
+            return False, "Input cannot be empty."
+        if len(text.strip()) < 3:
+            return False, "Message too short for meaningful analysis."
+        return True, ""
 
-# 3. Build the Streamlit Web Interface
-st.title("📱 SMS Spam Detector")
-st.write("Enter a text message below to check if it is Spam or Legitimate (Ham).")
+# --- MODULE 2: INFERENCE ENGINE (UOK Chapter 4.6 - System Configuration) ---
+class SpamEngine:
+    """Handles the AI brain and mathematical weight calculation."""
+    def __init__(self, model_path, vectorizer_path):
+        self.model = joblib.load(model_path)
+        self.vectorizer = joblib.load(vectorizer_path)
 
-user_input = st.text_area("Message:", "")
-
-if st.button("Analyze Message"):
-    if user_input:
-        # Clean and convert the input
-        cleaned_input = clean_text(user_input)
-        vectorized_input = vectorizer.transform([cleaned_input])
+    def predict(self, text):
+        cleaned = DataProcessor.clean_text(text)
+        vectorized = self.vectorizer.transform([cleaned])
+        prediction = self.model.predict(vectorized)[0]
+        prob = self.model.predict_proba(vectorized)[0][1] * 100
         
-        # Make the prediction AND get the probability
-        prediction = model.predict(vectorized_input)[0]
-        probabilities = model.predict_proba(vectorized_input)[0]
-        
-        # Probabilities return an array like [Ham_Prob, Spam_Prob]. We want the Spam_Prob.
-        spam_probability = probabilities[1] * 100 
-        
-        # --- NEW: THE ANALYTICS DASHBOARD ---
-        
-        st.divider() # Adds a clean horizontal line
-        
-        # 1. The Result & Confidence Meter
-        st.subheader("AI Analysis Result")
-        
-        if prediction == 'spam':
-            st.error(f"🚨 **SPAM DETECTED**")
-        else:
-            st.success(f"✅ **SAFE (HAM)**")
-            
-        st.write(f"**Confidence Score:** The AI is {spam_probability:.1f}% sure this message is spam.")
-        st.progress(int(spam_probability)) # Creates a visual progress bar
-        
-        # 2. The Message Breakdown (Bar Chart)
-        st.subheader("🔍 Why did the AI make this decision?")
-        st.write("Here are the specific words from your message that carried the most mathematical weight:")
-        
-        # Extract the specific words and their TF-IDF scores from this message
-        feature_names = vectorizer.get_feature_names_out()
-        tfidf_scores = vectorized_input.toarray()[0]
-        
-        # Match the words to their scores
+        # Extract word weights for the 'Why' analysis
+        feature_names = self.vectorizer.get_feature_names_out()
+        tfidf_scores = vectorized.toarray()[0]
         word_scores = {feature_names[i]: tfidf_scores[i] for i in range(len(feature_names)) if tfidf_scores[i] > 0}
         
-        if word_scores:
-            # Convert to a Pandas table, sort them, and grab the top 5
-            df_words = pd.DataFrame(list(word_scores.items()), columns=['Word', 'Importance Score'])
-            df_words = df_words.sort_values(by='Importance Score', ascending=False).head(5)
-            
-            # Draw a Streamlit Bar Chart
-            st.bar_chart(df_words.set_index('Word'))
-        else:
-            st.write("*No highly significant keywords were detected in this message.*")
+        return prediction, prob, word_scores
 
-    else:
-        st.warning("Please enter a message to analyze.")
+# --- MODULE 3: SYSTEM LOGGING (UOK Chapter 4.2 - Data Presentation) ---
+def log_system_activity(message, result, confidence):
+    """Logs system results for subsequent Chapter 4 interpretation."""
+    log_file = 'system_usage_logs.csv'
+    log_entry = pd.DataFrame([{
+        'Timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'Input_Snippet': message[:30] + "...",
+        'Result': result.upper(),
+        'Confidence': f"{confidence:.1f}%"
+    }])
+    log_entry.to_csv(log_file, mode='a', index=False, header=not os.path.exists(log_file))
+
+# --- MODULE 4: USER INTERFACE (UOK Chapter 4.8 - Front-End Architecture) ---
+def main():
+    st.set_page_config(page_title="UOK AI Research Project", layout="centered")
+    st.title("📱 Intelligent SMS Spam Filtering System")
+    st.markdown("---")
+    
+    # Initialize Engine
+    try:
+        engine = SpamEngine('spam_model.pkl', 'vectorizer.pkl')
+    except FileNotFoundError:
+        st.error("System Error: AI Model files missing. Please upload pkl files.")
+        return
+
+    # User Input Area
+    user_input = st.text_area("Enter Message for Analysis:", height=100)
+
+    if st.button("Run AI Diagnostic"):
+        # 1. Validation (Unit Testing)
+        is_valid, error_msg = DataProcessor.validate_input(user_input)
+        
+        if is_valid:
+            # 2. Execution
+            prediction, confidence, word_weights = engine.predict(user_input)
+            
+            # 3. Logging (For Chapter 4 Data Analysis)
+            log_system_activity(user_input, prediction, confidence)
+            
+            # 4. Display Results
+            st.subheader("Analysis Output")
+            if prediction == 'spam':
+                st.error("🚨 CLASSIFICATION: SPAM")
+            else:
+                st.success("✅ CLASSIFICATION: SAFE (HAM)")
+            
+            st.metric("AI Confidence Score", f"{confidence:.1f}%")
+            st.progress(int(confidence))
+
+            # 5. Visual Dashboard (Explanatory AI)
+            if word_weights:
+                st.subheader("🔍 Mathematical Feature Weighting")
+                df_viz = pd.DataFrame(list(word_weights.items()), columns=['Keyword', 'Weight'])
+                df_viz = df_viz.sort_values(by='Weight', ascending=False).head(5)
+                st.bar_chart(df_viz.set_index('Keyword'))
+        else:
+            st.warning(error_msg)
+
+if __name__ == "__main__":
+    main()
