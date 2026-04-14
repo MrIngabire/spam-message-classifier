@@ -9,12 +9,13 @@ from nltk.corpus import stopwords
 import plotly.express as px
 
 # --- CONFIGURATION & ASSETS ---
+# Download stopwords (required for the cloud environment)
 nltk.download('stopwords')
 STOP_WORDS = set(stopwords.words('english'))
 
 # --- MODULE 1: DATA PROCESSOR (UOK Functional Module) ---
 class DataProcessor:
-    """Handles text cleaning and validation logic[cite: 33, 152]."""
+    """Handles text cleaning and validation logic."""
     @staticmethod
     def clean_text(text):
         text = text.lower()
@@ -25,7 +26,7 @@ class DataProcessor:
 
     @staticmethod
     def validate_input(text):
-        """Unit Testing Logic for Validation[cite: 50, 153]."""
+        """Unit Testing Logic for Validation."""
         if not text.strip():
             return False, "Input cannot be empty."
         if len(text.strip()) < 3:
@@ -34,7 +35,7 @@ class DataProcessor:
 
 # --- MODULE 2: INFERENCE ENGINE (UOK System Configuration) ---
 class SpamEngine:
-    """Handles the AI brain and mathematical weight calculation[cite: 33, 152]."""
+    """Handles the AI brain and mathematical weight calculation."""
     def __init__(self, model_path, vectorizer_path):
         self.model = joblib.load(model_path)
         self.vectorizer = joblib.load(vectorizer_path)
@@ -53,7 +54,7 @@ class SpamEngine:
 
 # --- MODULE 3: SYSTEM LOGGING (UOK Data Presentation) ---
 def log_system_activity(message, result, confidence):
-    """Logs system results for Chapter 4 interpretation[cite: 29, 328]."""
+    """Logs system results for Chapter 4 interpretation."""
     log_file = 'system_usage_logs.csv'
     log_entry = pd.DataFrame([{
         'Timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -65,7 +66,7 @@ def log_system_activity(message, result, confidence):
 
 # --- MODULE 4: USER INTERFACE (UOK Front-End Architecture) ---
 def main():
-    # UOK Formatting: Professional Layout [cite: 41, 152]
+    # UOK Formatting: Professional Layout
     st.set_page_config(page_title="Intelligent Spam Diagnostic", layout="wide")
 
     # Custom CSS for the "Impress Mode" Dark Theme
@@ -74,7 +75,7 @@ def main():
         .stMetric { background-color: #161b22; border-radius: 10px; padding: 15px; border: 1px solid #30363d; }
         [data-testid="stMetricValue"] { color: #58a6ff; }
         </style>
-        """, unsafe_allow_input=True)
+        """, unsafe_allow_html=True)
 
     st.title("📱 Intelligent SMS Spam Filtering System")
     st.caption("Final Year Research Project - AI-Based Task Streamlining Sub-module")
@@ -86,7 +87,7 @@ def main():
         st.error("⚠️ SYSTEM ERROR: AI Model assets not found. Check deployment folder.")
         return
 
-    # TOP ROW: System Overview Metrics [cite: 255, 338]
+    # TOP ROW: System Overview Metrics
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("System Status", "ACTIVE", "Healthy")
     m2.metric("Inference Engine", "NB-V1.4", "Stable")
@@ -103,7 +104,7 @@ def main():
 
     st.divider()
 
-    # MAIN ROW: Split Dashboard [cite: 337]
+    # MAIN ROW: Split Dashboard
     col_input, col_viz = st.columns([1, 1])
 
     with col_input:
@@ -131,7 +132,7 @@ def main():
     with col_viz:
         st.subheader("🔍 Algorithmic Interpretation")
         if 'word_weights' in locals() and word_weights:
-            st.write("Relative weight of keywords found in the message[cite: 255]:")
+            st.write("Relative weight of keywords found in the message:")
             df_viz = pd.DataFrame(list(word_weights.items()), columns=['Keyword', 'Score'])
             df_viz = df_viz.sort_values(by='Score', ascending=False).head(8)
             
@@ -143,7 +144,7 @@ def main():
         else:
             st.info("Input a message and run analysis to view keyword weighting.")
 
-    # BOTTOM ROW: History Table [cite: 29, 334]
+    # BOTTOM ROW: History Table
     st.divider()
     st.subheader("📊 Historical System Logs")
     if os.path.exists('system_usage_logs.csv'):
