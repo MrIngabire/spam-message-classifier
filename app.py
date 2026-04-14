@@ -78,7 +78,7 @@ def main():
         """, unsafe_allow_html=True)
 
     st.title("📱 Intelligent SMS Spam Filtering System")
-    st.caption("Final Year Research Project - AI-Based Task Streamlining Sub-module")
+    st.caption("Final Year Research Project | By: Niyonkuru Fabrice (Reg: 2305000644) | University of Kigali")
     
     # Initialization
     try:
